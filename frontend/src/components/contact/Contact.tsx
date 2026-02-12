@@ -16,12 +16,12 @@ const SOCIALS = [
   {
     icon: Linkedin,
     label: 'LinkedIn',
-    href: 'https://linkedin.com/in/',
+    href: 'https://www.linkedin.com/in/ricardomendezcavalieri/',
   },
   {
     icon: Mail,
     label: 'Email',
-    href: 'mailto:hello@ramcav.dev',
+    href: 'mailto:ramcavalieri@gmail.com',
   },
 ];
 

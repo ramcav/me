@@ -33,8 +33,8 @@ export default function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
         >
-          <span className="text-cyan">&gt;</span> software engineer &middot;
-          systems thinker &middot; builder
+          <span className="text-cyan">&gt;</span> backend engineer &middot;
+          AI agents &middot; startup founder
         </motion.p>
 
         <motion.div

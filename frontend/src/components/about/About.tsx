@@ -13,7 +13,7 @@ export default function About() {
         <SectionHeading
           label="// about"
           title="Who I Am"
-          subtitle="Engineer at the intersection of systems, data, and intelligence."
+          subtitle="CS & AI student, backend engineer, and startup founder based in Madrid."
         />
 
         <div ref={ref} className="grid gap-12 md:grid-cols-2 md:items-center">
@@ -25,21 +25,27 @@ export default function About() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <p>
-              I build things that sit at the boundary of{' '}
-              <span className="text-cyan">hard engineering</span> and{' '}
-              <span className="text-orange">creative exploration</span> — from
-              distributed systems and GPU-accelerated compute to LLM agents and
-              generative art.
+              I'm a Computer Science &amp; AI student at{' '}
+              <span className="text-cyan">IE University</span>, ranked 1st in
+              my class with a 9.38/10 GPA. I build at the intersection of{' '}
+              <span className="text-cyan">backend engineering</span> and{' '}
+              <span className="text-orange">AI innovation</span> — from
+              production agent systems to full-stack platforms.
             </p>
             <p>
-              I care about performance, clean abstractions, and writing software
-              that earns trust. Whether it's crafting a Raft consensus
-              implementation or wiring up a transformer pipeline, the work is
-              always about understanding the system end to end.
+              I've interned as a backend engineer at{' '}
+              <span className="text-cyan">Wise</span> working on identity
+              verification at scale with Java, Kafka, and distributed systems,
+              and I'm currently building AI agents at{' '}
+              <span className="text-orange">Supahost</span> with FastAPI and
+              Google ADK.
             </p>
             <p>
-              When I'm not coding, I'm reading papers, tinkering with hardware,
-              or exploring the frontier of what's computationally possible.
+              I also founded{' '}
+              <span className="text-orange">theHouse</span>, a nightlife tech
+              startup where I built an iOS app with 500+ downloads and a
+              full-stack payment platform. Currently writing my thesis on
+              agentic memory systems.
             </p>
           </motion.div>
 
