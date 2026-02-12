@@ -1,8 +1,5 @@
-import { Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
-import ParticleNetwork from './ParticleNetwork';
 
 export default function Hero() {
   return (
@@ -10,22 +7,9 @@ export default function Hero() {
       id="hero"
       className="relative flex h-screen w-full items-center justify-center overflow-hidden"
     >
-      {/* Three.js Canvas */}
-      <div className="absolute inset-0">
-        <Canvas
-          camera={{ position: [0, 0, 8], fov: 60 }}
-          dpr={[1, 2]}
-          gl={{ antialias: true, alpha: true }}
-        >
-          <Suspense fallback={null}>
-            <ParticleNetwork />
-          </Suspense>
-        </Canvas>
-      </div>
-
-      {/* Gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-b from-bg/40 via-transparent to-bg" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,#06060b_70%)]" />
+      {/* Gradient overlays on top of the global ASCII background */}
+      <div className="absolute inset-0 z-[1] bg-gradient-to-b from-bg/30 via-transparent to-bg" />
+      <div className="absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,transparent_0%,#06060b_75%)]" />
 
       {/* Content overlay */}
       <div className="relative z-10 px-6 text-center">
@@ -76,7 +60,7 @@ export default function Hero() {
 
       {/* Scroll indicator */}
       <motion.div
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2"
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
       >

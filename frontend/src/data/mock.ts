@@ -163,3 +163,88 @@ export const ABOUT_FACTS = [
   { label: 'interests', value: 'distributed systems, AI agents' },
   { label: 'github', value: 'github.com/ramcav' },
 ];
+
+export interface Publication {
+  title: string;
+  authors: string;
+  venue: string;
+  year: number;
+  abstract: string;
+  url?: string;
+  tags: string[];
+}
+
+export interface ResearchInterest {
+  title: string;
+  icon: string;
+  description: string;
+  keywords: string[];
+}
+
+export const PUBLICATIONS: Publication[] = [
+  {
+    title: 'Efficient Consensus in Heterogeneous Edge Networks',
+    authors: 'R. Mendez, et al.',
+    venue: 'arXiv preprint',
+    year: 2025,
+    abstract:
+      'We propose an adaptive Raft variant that adjusts heartbeat and election timeouts based on network latency profiles, reducing leader election overhead by 40% in geo-distributed edge deployments.',
+    url: '#',
+    tags: ['distributed-systems', 'consensus', 'edge-computing'],
+  },
+  {
+    title: 'Retrieval-Augmented Generation with Hierarchical Memory',
+    authors: 'R. Mendez, et al.',
+    venue: 'Workshop on LLM Agents',
+    year: 2025,
+    abstract:
+      'A memory architecture for LLM agents that maintains short-term, episodic, and semantic memory layers, enabling more coherent multi-turn reasoning over large codebases.',
+    url: '#',
+    tags: ['llm', 'rag', 'memory', 'agents'],
+  },
+];
+
+export const RESEARCH_INTERESTS: ResearchInterest[] = [
+  {
+    title: 'Emergent Behavior in Multi-Agent Systems',
+    icon: '\u{1F9E0}',
+    description:
+      'How do simple agent rules produce complex collective intelligence? Exploring coordination protocols, swarm dynamics, and emergent problem-solving in LLM agent ensembles.',
+    keywords: ['multi-agent', 'emergence', 'swarm-intelligence'],
+  },
+  {
+    title: 'Learned Index Structures',
+    icon: '\u{1F50D}',
+    description:
+      'Replacing traditional B-trees and hash maps with neural networks that learn the data distribution. Investigating trade-offs between model complexity and query latency.',
+    keywords: ['learned-indexes', 'database', 'neural-networks'],
+  },
+  {
+    title: 'Program Synthesis via LLMs',
+    icon: '\u{1F4BB}',
+    description:
+      'Can language models reliably generate correct, efficient, and safe code from natural language specs? Studying formal verification techniques for LLM-generated programs.',
+    keywords: ['program-synthesis', 'formal-verification', 'llm'],
+  },
+  {
+    title: 'GPU-Accelerated Scientific Computing',
+    icon: '\u{26A1}',
+    description:
+      'Pushing compute shaders and CUDA kernels for real-time simulation — from fluid dynamics to molecular modeling. Exploring WebGPU as a portable compute target.',
+    keywords: ['gpu', 'compute-shaders', 'simulation', 'webgpu'],
+  },
+  {
+    title: 'Dimensionality Reduction as Art',
+    icon: '\u{1F3A8}',
+    description:
+      'Using PCA, UMAP, and t-SNE not just for analysis but as a generative medium — turning high-dimensional data like git histories into visual art.',
+    keywords: ['dimensionality-reduction', 'generative-art', 'visualization'],
+  },
+  {
+    title: 'Secure Distributed Computation',
+    icon: '\u{1F512}',
+    description:
+      'Exploring MPC (multi-party computation) and homomorphic encryption for privacy-preserving ML inference on untrusted infrastructure.',
+    keywords: ['mpc', 'homomorphic-encryption', 'privacy', 'security'],
+  },
+];
