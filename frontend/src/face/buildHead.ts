@@ -11,6 +11,7 @@ export interface Brick {
   mouth: number; // vertical offset per unit of mouth opening (negative = drops)
   stretch: number; // extra height per unit of opening, so neighbouring rows never gap
   sway: number; // 0..1, hair-tip wobble
+  long?: number; // stretches the brick sideways (1x2 Lego-style)
   eye?: 1 | 2; // 1 = eye white (blinks), 2 = pupil (blinks and looks around)
   scale?: number; // brick size relative to STEP (eyes use finer bricks)
 }
@@ -47,33 +48,62 @@ function rng(seed: number) {
 }
 
 // --- Parts -------------------------------------------------------------------
-// Hair: chunky spikes radiating from the crown like flames. [base, tip, base radius]
-const SPIKES: [V, V, number][] = [
-  [[0, 14, 0], [1, 30, -1], 5],
-  [[-4, 14, 0], [-10, 28, -1], 4.8],
-  [[4, 14, 0], [11, 28, -2], 4.8],
-  [[-7, 12, 0], [-18, 23, 0], 4.6],
-  [[7, 12, 0], [19, 22, -1], 4.6],
-  [[-9, 8, -1], [-22, 13, 1], 4.2],
-  [[9, 8, -1], [22, 12, 0], 4.2],
-  [[-9, 4, -3], [-19, 3, -2], 3.8],
-  [[9, 4, -3], [19, 2, -3], 3.8],
-  [[-2, 14, 4], [-5, 24, 8], 3.8],
-  [[3, 14, 4], [7, 23, 8], 3.8],
-  [[0, 11, -8], [0, 22, -18], 4.6],
-  [[-7, 9, -7], [-16, 17, -15], 4.2],
-  [[7, 9, -7], [16, 16, -15], 4.2],
+// Hair: thick, curved clumps in layers, like the NFT's flame-shaped locks. Each is a
+// quadratic curve [base, control, tip] with a tapering radius.
+const CLUMPS: [V, V, V, number][] = [
+  // crown, flaring up and outward, tips curling away from the face
+  [[0, 15, 0], [1, 24, 1], [-2, 31, -2], 5.6],
+  [[-4, 15, 1], [-8, 23, 2], [-15, 29, 0], 5.3],
+  [[4, 15, 1], [8, 23, 2], [15, 29, -1], 5.3],
+  [[-7, 13, 0], [-14, 19, 1], [-22, 22, -1], 5.1],
+  [[7, 13, 0], [14, 19, 1], [22, 22, -2], 5.1],
+  [[-9, 9, -1], [-17, 12, 0], [-24, 10, -2], 4.7],
+  [[9, 9, -1], [17, 13, 0], [25, 12, -2], 4.7],
+  // bangs over the forehead, curling forward
+  [[-3, 16, 4], [-5, 22, 8], [-8, 22, 11], 3.6],
+  [[3, 16, 4], [5, 23, 8], [7, 23, 11], 3.6],
+  [[0, 17, 3], [0, 24, 7], [1, 25, 10], 3.8],
+  // side locks framing the face, down to the jaw
+  [[-10, 9, 1], [-13.5, 3, 2.5], [-12.5, -5, 1.5], 3.6],
+  [[10, 9, 1], [13.5, 3, 2.5], [12.5, -5, 1.5], 3.6],
+  // back layer
+  [[0, 11, -8], [0, 19, -15], [0, 24, -19], 5],
+  [[-7, 9, -7], [-13, 15, -13], [-19, 17, -17], 4.6],
+  [[7, 9, -7], [13, 15, -13], [19, 17, -17], 4.6],
 ];
-// The screw: a flat spindle through the head, point out the lower left, tip out the upper right.
-const SCREW_A: V = [-22, -1, 3];
-const SCREW_B: V = [20, 14, 0];
+// Pre-sample each clump into spheres; the bounding box lets most cells skip the clump.
+const CLUMP_SAMPLES = CLUMPS.map(([a, c, b, r0]) => {
+  const pts: { p: V; r: number; t: number }[] = [];
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20, u = 1 - t;
+    const p = [0, 1, 2].map((k) => u * u * a[k] + 2 * u * t * c[k] + t * t * b[k]) as V;
+    pts.push({ p, r: r0 * (1 - t) ** 0.85 + 0.4, t });
+  }
+  const lo = [0, 1, 2].map((k) => Math.min(...pts.map((q) => q.p[k] - q.r))) as V;
+  const hi = [0, 1, 2].map((k) => Math.max(...pts.map((q) => q.p[k] + q.r))) as V;
+  return { pts, lo, hi };
+});
+// Hair cap over the skull fills the gaps between clumps; the forehead stays clear.
+const hairCap = (p: V) => ellipsoid(p, [0, 8.5, -1.5], [11.6, 11, 11.6]) <= 0 && !(p[2] > 3 && p[1] < 15) && p[1] > 3;
 
-// Upper lip is two lobes (a cupid's bow) so the nose tip can sit in the dip; lower lip is one full pout.
-const UPPER_LIP = (p: V) => Math.min(
-  ellipsoid(p, [-2.7, -3.9, 9.3], [3.9, 2, 2.1]),
-  ellipsoid(p, [2.7, -3.9, 9.3], [3.9, 2, 2.1]),
+// The screw: a flat spindle through the head, point out the lower left, tip out the upper right.
+const SCREW_A: V = [-27, -3, 3];
+const SCREW_B: V = [24, 15, 0];
+
+// Around the mouth, as in the NFT: a thick periwinkle moustache above (two lobes, so the nose
+// tip can sit in the dip) and a full beard bumper below, with yellow lips between them.
+const MOUSTACHE = (p: V) => Math.min(
+  ellipsoid(p, [-2.8, -3.5, 9.9], [4.2, 1.9, 2.6]),
+  ellipsoid(p, [2.8, -3.5, 9.9], [4.2, 1.9, 2.6]),
 );
-const LOWER_LIP = (p: V) => ellipsoid(p, [0, -8.2, 9], [5.8, 2.4, 2.3]);
+const CHIN_BEARD_C: V = [0, -9, 9.6];
+const CHIN_BEARD_R: V = [6, 2.5, 2.8];
+const CHIN_BEARD = (p: V) => ellipsoid(p, CHIN_BEARD_C, CHIN_BEARD_R);
+// Yellow lips: rounded upper and lower lip meeting at MOUTH_Y.
+const UPPER_LIP = (p: V) => ellipsoid(p, [0, -5.05, 9.5], [4.5, 1.05, 2.1]);
+const LOWER_LIP_C: V = [0, -6.85, 9.4];
+const LOWER_LIP_R: V = [4.3, 1.2, 2.1];
+const LOWER_LIP = (p: V) => ellipsoid(p, LOWER_LIP_C, LOWER_LIP_R);
 
 const neck = (p: V) => cone(p, [0, -8, -1.5], [0, -24, -1.5], 5.4, 6.4).d;
 
@@ -124,32 +154,37 @@ function headSdf(p: V, sockets = true) {
     d = smin(d, Math.max(Math.abs(x - sx * 6.6) - 2.2, Math.abs(y - 2.2) - 1.1, z - (8.3 - Math.abs(x) * 0.12), 4 - z), 0.6);
   }
   d = smin(d, nose(p), 0.5);
-  d = smin(d, UPPER_LIP(p), 0.8);
-  d = smin(d, LOWER_LIP(p), 0.8);
+  d = smin(d, MOUSTACHE(p), 0.8);
+  d = smin(d, CHIN_BEARD(p), 0.8);
+  d = smin(d, UPPER_LIP(p), 0.4);
+  d = smin(d, LOWER_LIP(p), 0.4);
   d = smin(d, Math.max(Math.abs(x) - 3.6, Math.abs(y + 11.3) - 1.4, z - 8.4, 2 - z), 0.6); // square chin
   d = smin(d, neck(p), 2);
-  // Resting mouth gap: a thin slot between the lips, deep enough to show teeth.
-  const slot = ellipsoid(p, [0, MOUTH_Y, 8.2], [5.2, 1.4, 4]);
+  // Resting mouth: a thin dark line where the lips meet.
+  const slot = ellipsoid(p, [0, MOUTH_Y, 8.4], [4.2, 0.45, 3.6]);
   d = Math.max(d, -slot);
   return sockets ? Math.max(d, -socket(p)) : d;
 }
 
-const upperTeeth = (p: V) => Math.abs(p[0]) < 4.4 && p[1] > -6 && p[1] < -4.6 && p[2] > 6 && p[2] < 9.4;
-const lowerTeeth = (p: V) => Math.abs(p[0]) < 3.8 && p[1] > -7.2 && p[1] < -6.1 && p[2] > 6 && p[2] < 9;
+const upperTeeth = (p: V) => Math.abs(p[0]) < 3.4 && p[1] > -6.2 && p[1] < -5.2 && p[2] > 6 && p[2] < 8.2;
+const lowerTeeth = (p: V) => Math.abs(p[0]) < 3 && p[1] > -6.8 && p[1] < -6 && p[2] > 6 && p[2] < 7.8;
 
-function spikeAt(p: V) {
-  let best = { d: Infinity, t: 0 };
-  for (const [a, b, r] of SPIKES) {
-    const c = cone(p, a, b, r * 1.15, 0.6, 0.8);
-    if (c.d < best.d) best = c;
+function hairAt(p: V) {
+  let t = -1;
+  for (const c of CLUMP_SAMPLES) {
+    if (p[0] < c.lo[0] || p[0] > c.hi[0] || p[1] < c.lo[1] || p[1] > c.hi[1] || p[2] < c.lo[2] || p[2] > c.hi[2]) continue;
+    for (const q of c.pts) {
+      if (len(p[0] - q.p[0], p[1] - q.p[1], (p[2] - q.p[2]) / 0.85) <= q.r) { t = Math.max(t, q.t); break; }
+    }
   }
-  return best;
+  return t;
 }
 
 function screwAt(p: V) {
   const c = cone(p, SCREW_A, SCREW_B, 0, 0, 0.5);
   // Spindle profile: widest inside the head, pointed at both ends.
-  const r = 4.2 * Math.sin(Math.PI * c.t) ** 0.8;
+  // Jagged: the radius varies in chunks, like the NFT's crumpled chrome.
+  const r = 5.6 * Math.sin(Math.PI * c.t) ** 0.7 * (0.75 + 0.5 * clump([p[0] * 1.6, p[1] * 1.6, p[2]]));
   const ab: V = [SCREW_B[0] - SCREW_A[0], SCREW_B[1] - SCREW_A[1], SCREW_B[2] - SCREW_A[2]];
   const q: V = [p[0] - SCREW_A[0] - ab[0] * c.t, p[1] - SCREW_A[1] - ab[1] * c.t, (p[2] - SCREW_A[2] - ab[2] * c.t) / 0.5];
   return len(...q) - r;
@@ -176,15 +211,23 @@ function mouthWeight(p: V) {
 const ORANGE = ['#ff5a1f', '#ff6a26', '#f24c16', '#ff7b35', '#ff5220', '#e8480f'];
 const BLUE = ['#2e6de8', '#3b82f6', '#2358d4', '#2a62dc', '#1f4fc2'];
 const WHITE = ['#eef2f7', '#dfe6ef', '#ffffff'];
-const CHROME = ['#e6e9ee', '#d3d8df', '#f4f6f8', '#bfc5ce'];
+const CHROME = ['#f2f4f7', '#e2e6eb', '#ffffff', '#cfd5dd'];
 const RED = ['#ef3f1d', '#ff5a33', '#e2361a', '#ff6d3f'];
 const NOSE_RIDGE = ['#ff8a45', '#ff9552', '#ff7f3a'];
 const NOSE_SIDE = ['#d63d0e', '#c8360b', '#dd4412'];
 const NOSTRIL = ['#5a1a08', '#4a1506'];
-const LIP = ['#a3adff', '#b3bbff', '#949fff', '#c0c6ff'];
+// Moustache and chin beard: periwinkle, glossy.
+const STACHE = ['#6480ff', '#6f89ff', '#5a78f7', '#7088ff'];
+const STACHE_HIGHLIGHT = ['#b3c1ff', '#a6b6ff', '#c2cdff'];
+const STACHE_SHADOW = ['#3f55d4', '#384cc4', '#4459da'];
+// Lips: warm yellow-orange.
+const LIP = ['#ffbe4d', '#ffc561', '#ffb53f', '#ffca6b'];
+const LIP_HIGHLIGHT = ['#ffe39f', '#ffda87'];
+const LIP_SHADOW = ['#e38f24', '#d9841d'];
 const BEARD = ['#1c47b8', '#2152cc', '#173fa6', '#2458d6'];
-const TOOTH = ['#ffd38c', '#ffe0a6', '#f5c678'];
-const GLASS = ['#ff5c73', '#ff7085', '#f24d66'];
+const TOOTH = ['#f4f0e6', '#ebe5d8', '#faf7f0'];
+const GLASS = ['#ffb3bd', '#ffc2ca', '#ffa6b2'];
+const GLASS_EDGE = ['#e0405e', '#d63656'];
 const SCLERA = ['#dfe2e8', '#cfd4dc', '#e8eaee', '#d6dae1'];
 const IRIS = ['#343945', '#2e333e', '#3a404d'];
 const IRIS_SHADOW = ['#22262e', '#1e2128'];
@@ -211,8 +254,8 @@ export function buildHead(): Brick[] {
         else if (headSdf(p) <= 0) kind[c] = 1;
         else if (screwAt(p) <= 0) kind[c] = 3;
         else {
-          const s = spikeAt(p);
-          if (s.d <= 0 && p[1] > -2) { kind[c] = 2; sway[c] = s.t; }
+          const t = hairAt(p);
+          if (t >= 0) { kind[c] = 2; sway[c] = t; } else if (hairCap(p)) kind[c] = 2;
         }
       }
 
@@ -241,7 +284,19 @@ export function buildHead(): Brick[] {
         else if (kd === 2) color = clump(p) < 0.2 || r() < 0.05 ? pick(WHITE) : pick(BLUE);
         else color = skinColor(p, r, pick);
 
+        const lipBrick = kd === 1 && (LIP.includes(color) || STACHE.includes(color));
+        // Ambient occlusion: bricks in crevices (many filled cells nearby) are darker.
+        if (surface && kd !== 4) {
+          let occ = 0;
+          for (let di = -2; di <= 2; di++)
+            for (let dj = -2; dj <= 2; dj++)
+              for (let dk = -2; dk <= 2; dk++) if (filled(i + di, j + dj, k + dk)) occ++;
+          // Skin gets a lighter touch so the face stays bright orange; hair and screw get the full depth.
+          const strength = kd === 1 ? 0.3 : 0.6;
+          color = shade(color, 1 - strength * Math.min(1, Math.max(0, (occ / 125 - 0.42) / 0.4)));
+        }
         bricks.push({
+          long: surface && (kd === 2 || lipBrick) && r() < 0.4 ? 1.8 : 1,
           // Loose placement: each brick is nudged a little off the grid.
           pos: surface ? [p[0] + (r() - 0.5) * 0.2, p[1] + (r() - 0.5) * 0.2, p[2] + (r() - 0.5) * 0.35] : p,
           color, chrome, glass: false,
@@ -257,10 +312,12 @@ export function buildHead(): Brick[] {
     for (let j = 0; j < n[1]; j++)
       for (let k = 0; k < n[2]; k++) {
         const p = at(i, j, k);
-        if (p[1] < 2.8 || p[1] > 9 || p[2] < -0.5) continue;
+        if (p[1] < 2.3 || p[1] > 8.5 || p[2] < -1.5) continue;
         const d = headSdf(p, false); // glasses sit over the sockets, not in them
-        if (d > 0.7 && d <= 0.7 + STEP) {
-          bricks.push({ pos: p, color: pick(GLASS), chrome: false, glass: true, mouth: 0, stretch: 0, sway: 0 });
+        // Two bricks thick, standing well off the face like the NFT's goggles.
+        if (d > 0.6 && d <= 0.6 + STEP * 2) {
+          const edge = p[1] < 3.1 || p[1] > 7.7 || p[2] < 0.5;
+          bricks.push({ pos: p, color: pick(edge ? GLASS_EDGE : GLASS), chrome: false, glass: true, mouth: 0, stretch: 0, sway: 0 });
         }
       }
 
@@ -268,6 +325,12 @@ export function buildHead(): Brick[] {
 }
 
 // White comes in patches, like the NFT, rather than single speckles.
+function shade(hex: string, f: number) {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = (v: number) => Math.round(Math.min(255, v * f)).toString(16).padStart(2, '0');
+  return `#${ch(n >> 16)}${ch((n >> 8) & 255)}${ch(n & 255)}`;
+}
+
 function clump(p: V) {
   const h = Math.sin(Math.floor(p[0] / 2.6) * 127.1 + Math.floor(p[1] / 2.6) * 311.7 + Math.floor(p[2] / 2.6) * 74.7) * 43758.5453;
   return h - Math.floor(h);
@@ -310,8 +373,26 @@ function skinColor(p: V, r: () => number, pick: (xs: string[]) => string) {
     if (y < NOSE_BASE + 0.6 && Math.abs(x) > 0.5 && Math.abs(x) < 2.2 && z > 8.6) return pick(NOSTRIL);
     return Math.abs(x) < 0.7 ? pick(NOSE_RIDGE) : pick(NOSE_SIDE);
   }
-  // Lips: the forward rim of each lip shape.
-  if (z > 8.2 && Math.abs(x) < 6 && (UPPER_LIP(p) <= 0.15 || LOWER_LIP(p) <= 0.15)) return pick(LIP);
+  // Lips: yellow, rounded; the top of the lower lip catches the light, corners fall into shadow.
+  if (z > 8 && Math.abs(x) < 4.8) {
+    if (LOWER_LIP(p) <= 0.2) {
+      if (Math.abs(x) > 3.6) return pick(LIP_SHADOW);
+      return (y - LOWER_LIP_C[1]) / LOWER_LIP_R[1] > 0.1 && z > 10.4 ? pick(LIP_HIGHLIGHT) : pick(LIP);
+    }
+    if (UPPER_LIP(p) <= 0.2) return Math.abs(x) > 3.8 || y < -5.5 ? pick(LIP_SHADOW) : pick(LIP);
+  }
+  // Moustache and chin beard: glossy periwinkle bumpers around the mouth.
+  if (z > 8 && Math.abs(x) < 6.6) {
+    if (MOUSTACHE(p) <= 0.2) {
+      if (Math.abs(x) > 5.4 || y < -4.6) return pick(STACHE_SHADOW);
+      return y > -3 && z > 10.4 ? pick(STACHE_HIGHLIGHT) : pick(STACHE);
+    }
+    if (CHIN_BEARD(p) <= 0.2) {
+      const ny = (y - CHIN_BEARD_C[1]) / CHIN_BEARD_R[1];
+      if (Math.abs(x) > 5 || ny < -0.55) return pick(STACHE_SHADOW);
+      return ny > 0.15 && z > 10.4 ? pick(STACHE_HIGHLIGHT) : pick(STACHE);
+    }
+  }
   if (y < -8 && neck(p) <= 0.6) return pick(RED);
   // Socket floor is eyelid skin, so a blink reads as a closed lid.
   if (z > 5 && socket(p) <= 0.9) return pick(LID);

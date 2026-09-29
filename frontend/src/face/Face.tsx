@@ -30,7 +30,7 @@ function patch(material: THREE.Material) {
         '#include <common>',
         `#include <common>
         uniform float uTime; uniform float uBuild; uniform float uOpen; uniform vec2 uLook; uniform float uBlink; uniform float uLidY;
-        attribute vec4 aHome; attribute vec3 aScatter; // aHome.w = brick scale
+        attribute vec4 aHome; attribute vec4 aScatter; // aHome.w = brick scale, aScatter.w = brick length
         // Packed to stay under WebGL's 16 vertex attributes.
         attribute vec4 aAnim; // mouth, stretch, eye (1 white, 2 pupil), sway
         attribute vec4 aMisc; // phase, delay, tilt.xy
@@ -52,13 +52,16 @@ function patch(material: THREE.Material) {
         // Loose bricks drift very slightly, each on its own rhythm.
         p += vec3(sin(uTime * 0.8 + aPhase * 40.0), cos(uTime * 0.7 + aPhase * 23.0), sin(uTime * 0.6 + aPhase * 31.0)) * (aHome.w < 1.0 ? 0.0 : 0.05);
         p += aSway * aSway * vec3(sin(uTime * 1.3 + aPhase * 6.28), cos(uTime * 1.1 + aPhase * 6.28), 0.0) * 0.5;
-        float t = clamp((uBuild - aDelay) / 0.45, 0.0, 1.0);
-        t = 1.0 - pow(1.0 - t, 3.0);
-        p = mix(aScatter, p, t);
+        // Build-in: each brick drops from just above its spot and settles with a small bounce.
+        float t = clamp((uBuild - aDelay) / 0.28, 0.0, 1.0);
+        float drop = 1.0 + 2.2 * pow(t - 1.0, 3.0) + 1.2 * pow(t - 1.0, 2.0); // ease-out-back
+        p = mix(aScatter.xyz, p, drop);
+        float grow = smoothstep(0.0, 0.5, t);
         vec3 size = vec3(${(STEP * 0.8).toFixed(3)}) * (aHome.w < 1.0 ? aHome.w * 1.15 : 1.0); // fine bricks sit edge to edge
+        size.x *= aScatter.w;
         size.y += aStretch * uOpen;
         if (aEye > 0.5) size.y *= 1.0 - uBlink;
-        vec3 lp = position * size * mix(0.3, 1.0, t);
+        vec3 lp = position * size * grow;
         lp.xy = mat2(cos(aTilt.x), sin(aTilt.x), -sin(aTilt.x), cos(aTilt.x)) * lp.xy; // small random tilt
         lp.xz = mat2(cos(aTilt.y), sin(aTilt.y), -sin(aTilt.y), cos(aTilt.y)) * lp.xz;
         vec3 transformed = lp + p;`,
@@ -71,11 +74,12 @@ type Kind = 'brick' | 'chrome' | 'glass';
 const kindOf = (b: Brick): Kind => (b.glass ? 'glass' : b.chrome ? 'chrome' : 'brick');
 
 const MATERIALS: Record<Kind, () => THREE.Material> = {
-  brick: () => new THREE.MeshStandardMaterial({ roughness: 0.4 }),
-  chrome: () => new THREE.MeshStandardMaterial({ roughness: 0.18, metalness: 0.7 }),
-  glass: () => new THREE.MeshStandardMaterial({
-    roughness: 0.1, transparent: true, opacity: 0.3, depthWrite: false,
-    emissive: new THREE.Color('#ff2a4a'), emissiveIntensity: 0.2,
+  // Glossy plastic, like Lego.
+  brick: () => new THREE.MeshPhysicalMaterial({ roughness: 0.38, clearcoat: 0.3, clearcoatRoughness: 0.25 }),
+  chrome: () => new THREE.MeshStandardMaterial({ roughness: 0.16, metalness: 0.75 }),
+  glass: () => new THREE.MeshPhysicalMaterial({
+    roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.26, depthWrite: false,
+    emissive: new THREE.Color('#ff3355'), emissiveIntensity: 0.08,
   }),
 };
 
@@ -83,23 +87,24 @@ function Bricks({ bricks, kind }: { bricks: Brick[]; kind: Kind }) {
   const mesh = useMemo(() => {
     const n = bricks.length;
     const f = (k: number) => new Float32Array(n * k);
-    const home = f(4), scatter = f(3), anim = f(4), misc = f(4);
+    const home = f(4), scatter = f(4), anim = f(4), misc = f(4);
     const geo = new THREE.BoxGeometry(1, 1, 1);
     const m = new THREE.InstancedMesh(geo, patch(MATERIALS[kind]()), n);
     const r = rng(kind.length * 7 + 1);
     const c = new THREE.Color();
     bricks.forEach((b, i) => {
       home.set([...b.pos, b.scale ?? 1], i * 4);
-      const d = new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).normalize().multiplyScalar(45 + r() * 30);
-      scatter.set([d.x, d.y, d.z], i * 3);
+      // Start just above the brick's own spot, so the head builds in place.
+      scatter.set([b.pos[0] + (r() - 0.5) * 1.2, b.pos[1] + 4 + r() * 3, b.pos[2] + (r() - 0.5) * 1.2, b.long ?? 1], i * 4);
       anim.set([b.mouth, b.stretch, b.eye ?? 0, b.sway], i * 4);
       const tilt = b.scale ? 0 : 0.28;
-      misc.set([r(), ((b.pos[1] + 18) / 50) * 0.5 + r() * 0.1, (r() - 0.5) * tilt, (r() - 0.5) * tilt], i * 4);
+      // Layer by layer from the neck up to the hair tips.
+      misc.set([r(), Math.max(0, (b.pos[1] + 18) / 50) * 0.7 + r() * 0.08, (r() - 0.5) * tilt, (r() - 0.5) * tilt], i * 4);
       m.setColorAt(i, c.set(b.color));
     });
     const attr = (a: Float32Array, k: number) => new THREE.InstancedBufferAttribute(a, k);
     geo.setAttribute('aHome', attr(home, 4));
-    geo.setAttribute('aScatter', attr(scatter, 3));
+    geo.setAttribute('aScatter', attr(scatter, 4));
     geo.setAttribute('aAnim', attr(anim, 4));
     geo.setAttribute('aMisc', attr(misc, 4));
     m.frustumCulled = false; // real positions come from the shader
@@ -158,7 +163,11 @@ class Eyes {
   }
 }
 
-function Head() {
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const HEAD_SCALE = 0.095;
+const HEAD_HALF_WIDTH = 2.6; // world units at HEAD_SCALE, hair tips included
+
+function Head({ aside }: { aside: boolean }) {
   const group = useRef<THREE.Group>(null);
   const pointer = useRef({ x: 0, y: 0 });
   const start = useRef<number | null>(null);
@@ -180,11 +189,14 @@ function Head() {
     return () => window.removeEventListener('pointermove', move);
   }, []);
 
-  useFrame(({ clock }, dt) => {
+  const shift = useRef({ x: 0, s: 1 });
+
+  useFrame(({ clock, viewport }, dt) => {
     const t = clock.elapsedTime;
     start.current ??= t;
     uniforms.uTime.value = t;
-    uniforms.uBuild.value = Math.min(1, (t - start.current) / 2.2);
+    // Visitors who ask for reduced motion get the finished head straight away.
+    uniforms.uBuild.value = REDUCED_MOTION ? 1.1 : Math.min(1.1, (t - start.current) / 1.6);
     // Mouth opens fast and closes a bit slower, which reads as speech rather than flapping.
     const target = voice.level;
     open.current += (target - open.current) * Math.min(1, dt * (target > open.current ? 22 : 12));
@@ -201,21 +213,30 @@ function Head() {
     g.rotation.x += (rx - g.rotation.x) * Math.min(1, dt * 3);
     g.rotation.z = Math.sin(t * 0.3) * 0.02;
     g.position.y = -0.4 + Math.sin(t * 1.2) * 0.03; // breathing
+    // Aside: shrink the head into the left half of the canvas so a bubble can use the right half.
+    const place = aside
+      ? { s: Math.min(1, (viewport.width / 2 - 0.1) / (HEAD_HALF_WIDTH * 2)), x: -viewport.width / 4 }
+      : { s: 1, x: 0 };
+    const k = Math.min(1, dt * 6);
+    shift.current.s += (place.s - shift.current.s) * k;
+    shift.current.x += (place.x - shift.current.x) * k;
+    g.scale.setScalar(HEAD_SCALE * shift.current.s);
+    g.position.x = shift.current.x;
   });
 
   return (
-    <group ref={group} scale={0.095}>
+    <group ref={group} scale={HEAD_SCALE}>
       {groups.map(([k, bricks]) => <Bricks key={k} bricks={bricks} kind={k} />)}
     </group>
   );
 }
 
-export default function Face({ onClick, label }: { onClick?: () => void; label?: string }) {
+export default function Face({ onClick, label, aside = false }: { onClick?: () => void; label?: string; aside?: boolean }) {
   return (
     <button type="button" onClick={onClick} aria-label={label} className="block size-full cursor-pointer outline-none">
       <Canvas
         dpr={[1, 2]}
-        camera={{ position: [0, 0, 8.6], fov: 32 }}
+        camera={{ position: [0, 0, 9.4], fov: 32 }}
         gl={{ antialias: true, alpha: true, toneMapping: THREE.NeutralToneMapping }}
         onCreated={({ gl, scene }) => {
           const pmrem = new THREE.PMREMGenerator(gl);
@@ -224,10 +245,12 @@ export default function Face({ onClick, label }: { onClick?: () => void; label?:
           pmrem.dispose();
         }}
       >
-        <hemisphereLight args={['#ffffff', '#3a2f45', 0.7]} />
-        <directionalLight position={[3, 5, 8]} intensity={1.6} />
-        <directionalLight position={[-6, 2, -4]} intensity={1.2} color="#9ab8ff" />
-        <Head />
+        <hemisphereLight args={['#ffffff', '#3a2f45', 0.45]} />
+        <directionalLight position={[3, 5, 8]} intensity={1.7} />
+        <directionalLight position={[-6, 2, -4]} intensity={1.1} color="#9ab8ff" />
+        {/* Rim light from above and behind separates the hair from the background. */}
+        <directionalLight position={[0, 8, -6]} intensity={0.9} />
+        <Head aside={aside} />
       </Canvas>
     </button>
   );

@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState } from 'react';
-import { bio, intro, links, projects, work, type Item } from './content';
+import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
+import { bio, intro, links, nft, projects, work, type Item } from './content';
 import { say, stop, type Line } from './face/voice';
 
 // Three.js loads after the text, so the page is readable instantly.
@@ -23,9 +23,9 @@ function Row({ item, active }: { item: Item; active: boolean }) {
   );
 }
 
-function Section({ title, items, active }: { title: string; items: Item[]; active?: string }) {
+function Section({ title, items, active, delay }: { title: string; items: Item[]; active?: string; delay?: string }) {
   return (
-    <section className="mt-14">
+    <section className="reveal mt-14" style={{ animationDelay: delay }}>
       <h2 className="mb-3 text-sm text-muted">{title}</h2>
       <div className="flex flex-col gap-1">
         {items.map((it) => <Row key={it.id} item={it} active={active === it.id} />)}
@@ -34,33 +34,84 @@ function Section({ title, items, active }: { title: string; items: Item[]; activ
   );
 }
 
+// Below this width there's no room beside the head, so the head steps aside for the bubble.
+const NARROW = '(max-width: 1023px)';
+function useNarrow() {
+  return useSyncExternalStore(
+    (cb) => { const m = matchMedia(NARROW); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb); },
+    () => matchMedia(NARROW).matches,
+  );
+}
+
 export default function App() {
   const [line, setLine] = useState<Line | null>(null);
+  const [aboutFace, setAboutFace] = useState(false);
+  const narrow = useNarrow();
+  const bubbleOpen = aboutFace && !line;
   const talking = line !== null;
 
   const toggle = () => (talking ? stop(setLine) : say(intro, setLine));
+
+  useEffect(() => {
+    if (!aboutFace) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !(e.target as Element).closest('[aria-expanded], .bubble')) setAboutFace(false);
+    };
+    window.addEventListener('keydown', close);
+    window.addEventListener('pointerdown', close);
+    return () => { window.removeEventListener('keydown', close); window.removeEventListener('pointerdown', close); };
+  }, [aboutFace]);
 
   return (
     <main className="mx-auto max-w-[620px] px-4 pb-24">
       <div className="relative -mx-4 h-[min(48vh,420px)] sm:-mx-16 sm:h-[min(62vh,520px)]">
         <Suspense fallback={null}>
-          <Face onClick={toggle} label={talking ? 'Stop talking' : 'Talk to Ricardo'} />
+          <Face onClick={toggle} label={talking ? 'Stop talking' : 'Talk to Ricardo'} aside={bubbleOpen && narrow} />
         </Suspense>
+
+        {/* Speech bubble from the character, always beside the face and never over it:
+            on wide screens it uses the empty space; on narrow ones the head steps aside first. */}
+        {bubbleOpen && (
+          <div className="bubble bubble-in absolute top-1/2 right-4 z-10 w-[calc(50%-1.5rem)] -translate-y-1/2 rounded-lg border border-white/10 bg-bg/95 p-3 text-left text-xs leading-relaxed text-muted shadow-2xl backdrop-blur sm:right-16 sm:w-[calc(50%-5rem)] sm:p-4 sm:text-sm lg:right-auto lg:left-[calc(50%+235px)] lg:w-64">
+            <p>{nft.fact}</p>
+            <a href={nft.href} target="_blank" rel="noreferrer" className="mt-3 inline-block text-fg hover:text-accent">
+              View on OpenSea
+            </a>
+            <span className="absolute top-1/2 right-full -mr-px size-3 translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-l border-white/10 bg-bg" />
+          </div>
+        )}
       </div>
 
-      <p className="caption -mt-2 min-h-[3.5rem] text-center text-[15px] text-fg" aria-live="polite">
-        {line ? line.text : <span className="text-muted">tap the face to hear from me · or read below</span>}
-      </p>
+      {/* One caption: who the face is, how to talk to it, and a bubble with its story. */}
+      <div className="reveal relative mt-4 min-h-[2.75rem] text-center text-[15px]" style={{ animationDelay: '0.9s' }} aria-live="polite">
+        {line ? (
+          <p className="caption text-fg">{line.text}</p>
+        ) : (
+          <p className="text-muted">
+            <span className="font-mono text-xs text-fg">{nft.name}</span>
+            {' · tap to talk · '}
+            <button
+              type="button"
+              onClick={() => setAboutFace((v) => !v)}
+              aria-expanded={aboutFace}
+              className="underline decoration-white/25 underline-offset-4 hover:text-fg"
+            >
+              read more
+            </button>
+          </p>
+        )}
+      </div>
 
-      <header className="mt-6">
+      <header className="reveal mt-10" style={{ animationDelay: '1s' }}>
         <h1 className="text-fg">{bio.name}</h1>
         <p className="mt-2 text-muted">{bio.line}</p>
+        <p className="mt-3 text-sm text-muted/80">{bio.curious}</p>
       </header>
 
-      <Section title="Work" items={work} active={line?.highlight} />
-      <Section title="Building" items={projects} active={line?.highlight} />
+      <Section title="Work" items={work} active={line?.highlight} delay="1.1s" />
+      <Section title="Building" items={projects} active={line?.highlight} delay="1.2s" />
 
-      <section className="mt-14">
+      <section className="reveal mt-14" style={{ animationDelay: '1.3s' }}>
         <h2 className="mb-3 text-sm text-muted">Elsewhere</h2>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {links.map((l) => (

@@ -1,12 +1,14 @@
 import type { Line } from './face/voice';
+import introLines from './intro.json';
 
 // Everything on the page lives here. Items marked TODO are placeholders to confirm.
 
 export const bio = {
   name: 'Ricardo Méndez Cavalieri',
   handle: 'ramcav',
-  // TODO: confirm wording
-  line: 'AI engineer based in Madrid. I build agents, and the tools that keep them honest.',
+  line: 'Founding engineer at Supahost, building text and voice agents for hospitality.',
+  // A hint at the research side: what he reads and tinkers with, not claimed as published work.
+  curious: 'Into AI safety and wetware.',
 };
 
 export interface Item {
@@ -17,32 +19,36 @@ export interface Item {
   tag?: string;
 }
 
-// TODO: confirm roles and order
 export const work: Item[] = [
-  { id: 'merkl', title: 'Merkl', description: 'Verifiable receipts for what AI agents do.', href: 'https://github.com/ramcav/merkl-sdk', tag: 'Now' },
-  { id: 'supahost', title: 'Supahost', description: 'AI engineer.', tag: 'Before' },
+  { id: 'supahost', title: 'Supahost', description: 'Text and voice agents for thousands of guest stays every month.', tag: 'Now' },
+  { id: 'ie', title: 'IE University', description: 'CS & AI. Best Student of the 2026 class.', tag: '2026' },
+  { id: 'wise', title: 'Wise', description: 'Backend intern in Tallinn. Remediated 3M verified ID records.', tag: '2025' },
+  { id: 'thehouse', title: 'theHouse', description: 'Founder. Dash, a ticketing and CRM platform, and an iOS app with 500+ downloads.', tag: '2023–25' },
 ];
 
-// TODO: pick from the list of candidates
 export const projects: Item[] = [
-  { id: 'swagbench', title: 'SwagBench', description: 'A benchmark for how well agents integrate real APIs.' },
-  { id: 'engram', title: 'ENGRAM', description: 'Episodic graph memory for agents. My thesis.', href: 'https://github.com/ramcav/engram' },
+  { id: 'merkl', title: 'Merkl', description: 'Lets AI agents move money safely: a second signer checks every transaction against your rules.', href: 'https://merkl.ai' },
+  { id: 'engram', title: 'ENGRAM', description: 'My thesis: long-term memory for LLM agents, evaluated on LoCoMo.', href: 'https://github.com/ramcav/engram' },
+  { id: 'vortex', title: 'Vortex', description: 'Won the voice-agent track at HackSpain 2026. A clinic phone agent in five languages.', href: 'https://github.com/jferreiros/vortex' },
+  { id: 'hoff', title: 'Hoff', description: 'YC hackathon. Browser agents that turn any SaaS into a guided onboarding tour.', href: 'https://github.com/hoff-onboard' },
   { id: 'napkin', title: 'napkin', description: 'A tiny macOS scratchpad for disposable notes.', href: 'https://github.com/ramcav/napkin' },
-  { id: 'thehouse', title: 'theHouse', description: 'iOS nightlife app. 500+ downloads, 30+ clubs in Madrid.', href: 'https://apps.apple.com/us/app/thehouse-your-best-night/id6478066393' },
 ];
 
 export const links: Item[] = [
   { id: 'github', title: 'GitHub', description: '', href: 'https://github.com/ramcav' },
+  { id: 'x', title: 'X', description: '', href: 'https://x.com/rixonardo' },
   { id: 'linkedin', title: 'LinkedIn', description: '', href: 'https://www.linkedin.com/in/ricardomendezcavalieri/' },
   { id: 'email', title: 'Email', description: '', href: 'mailto:ramcavalieri@gmail.com' },
   { id: 'cv', title: 'CV', description: '', href: '/cv.pdf' },
 ];
 
-// What the face says when clicked, until a real model is wired in.
-export const intro: Line[] = [
-  { text: "Hey. I'm Ricardo. Well, a brick version of him." },
-  { text: 'I build AI agents, and the infrastructure that keeps them honest.' },
-  { text: "Right now that's Merkl: signed, verifiable receipts for everything an agent does.", highlight: 'merkl' },
-  { text: 'Before that, SwagBench, a benchmark for how well agents handle real APIs.', highlight: 'swagbench' },
-  { text: 'Scroll down for the rest. Soon, you will be able to just ask me.' },
-];
+// The face is modelled on an NFT Ricardo owns.
+export const nft = {
+  name: 'Bricktopian #3899',
+  collection: 'Bricktopians by Law Degree',
+  href: 'https://opensea.io/item/ethereum/0x9eeeaf684e228c2d5c89435e010acc02c41dc86b/3899',
+  fact: "Meet Bricktopian #3899, one of my worst investments so far! It's an NFT from the Bricktopians collection, which I purchased in 2021. I gave it a voice and now you can speak with it :)",
+};
+
+// What the face says when clicked. Lines live in intro.json so `npm run voice` can turn them into audio.
+export const intro: Line[] = introLines;

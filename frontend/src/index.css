@@ -33,3 +33,27 @@ html {
 .caption {
   text-wrap: balance;
 }
+
+/* The bubble waits for the head to step aside before it appears. */
+.bubble-in {
+  animation: bubble-in 260ms ease-out 180ms both;
+}
+@keyframes bubble-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (min-width: 1024px) {
+  .bubble-in { animation-delay: 0ms; }
+}
+
+/* Page text fades in after the head has built itself. */
+.reveal {
+  animation: reveal 500ms ease-out both;
+}
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .bubble-in { animation: none; }
+}
