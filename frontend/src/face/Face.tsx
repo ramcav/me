@@ -129,27 +129,48 @@ const RELAXED_LID = 0.1; // lids rest slightly lowered; wide-open eyes read as a
 // Small, passing expressions, like the blinking: every few seconds the mouth may frown a
 // little, smirk to one side or turn pensive, hold it, then relax back to neutral. While
 // talking it stays close to neutral.
+// Extra lid lowering and mouth opening that expressions add on top of blinks and speech.
+const expr = { squint: 0, open: 0 };
+
+interface Expression { a: number; b: number; squint?: number; open?: number; weight: number }
+// A balanced mix: no single look dominates, and big smiles are rare. a/b are the two mouth corners (+ up, - down).
+const EXPRESSIONS: Record<string, Expression> = {
+  smile: { a: 0.6, b: 0.6, squint: 0.18, weight: 1.2 },         // corners up, eyes crinkle
+  grin: { a: 0.85, b: 0.85, squint: 0.28, open: 0.2, weight: 0.4 }, // teeth show a little; rare
+  soft: { a: 0.25, b: 0.25, squint: 0.06, weight: 1.5 },         // relaxed, content
+  smirkL: { a: 0.7, b: 0.1, squint: 0.08, weight: 1 },
+  smirkR: { a: 0.1, b: 0.7, squint: 0.08, weight: 1 },
+  hmm: { a: -0.35, b: 0.25, weight: 1.2 },                       // thinking, lopsided
+  frown: { a: -0.5, b: -0.5, weight: 0.8 },                      // brief, slight
+};
+
+// Passing expressions, like the blinking: every few seconds the face drifts into one, holds it,
+// then relaxes to neutral. Never the same one twice in a row. While talking it stays near neutral.
 class Mood {
-  private next = 3;
+  private next = 4;
   private resting = true;
-  private target = { a: 0, b: 0 };
+  private last = '';
+  private target: Expression = { a: 0, b: 0, weight: 0 };
+
+  private pick(): string {
+    const names = Object.keys(EXPRESSIONS).filter((n) => n !== this.last);
+    let r = Math.random() * names.reduce((s, n) => s + EXPRESSIONS[n].weight, 0);
+    for (const n of names) if ((r -= EXPRESSIONS[n].weight) <= 0) return n;
+    return names[0];
+  }
 
   update(t: number, dt: number, speaking: boolean) {
     if (t > this.next) {
       if (this.resting) {
-        const side = Math.random() < 0.5;
-        const roll = Math.random();
-        const pick = speaking
-          ? { a: (Math.random() - 0.5) * 0.2, b: (Math.random() - 0.5) * 0.2 }
-          : roll < 0.35 ? { a: -0.8, b: -0.8 } // slight frown
-          : roll < 0.6 ? (side ? { a: 0.75, b: -0.05 } : { a: -0.05, b: 0.75 }) // smirk
-          : roll < 0.8 ? (side ? { a: -0.7, b: -0.15 } : { a: -0.15, b: -0.7 }) // pensive, one side down
-          : { a: 0.15, b: 0.15 }; // content
-        this.target = pick;
-        this.next = t + 1.5 + Math.random() * 2;
+        const name = this.pick();
+        this.last = name;
+        const e = EXPRESSIONS[name];
+        this.target = speaking ? { a: e.a * 0.25, b: e.b * 0.25, squint: (e.squint ?? 0) * 0.5, weight: 0 } : e;
+        this.next = t + 1.4 + Math.random() * 1.6;
       } else {
-        this.target = { a: 0, b: 0 };
-        this.next = t + 3 + Math.random() * 4;
+        this.target = { a: 0, b: 0, weight: 0 };
+        // Mostly neutral: long rests between expressions, so they read as moments, not a loop.
+        this.next = t + 4 + Math.random() * 5;
       }
       this.resting = !this.resting;
     }
@@ -158,6 +179,8 @@ class Mood {
     const k = Math.min(1, dt * 3);
     c.x += (this.target.a - c.x) * k;
     c.y += (this.target.b - c.y) * k;
+    expr.squint += ((this.target.squint ?? 0) - expr.squint) * k;
+    expr.open += ((this.target.open ?? 0) - expr.open) * k;
   }
 }
 
@@ -198,7 +221,7 @@ class Eyes {
     look.x += (tx - look.x) * Math.min(1, dt * 18);
     look.y += (ty - look.y) * Math.min(1, dt * 18);
     // The upper lid follows the eye: looking down lowers it.
-    const lid = RELAXED_LID + Math.max(0, -look.y) * 1.2;
+    const lid = Math.min(0.6, RELAXED_LID + Math.max(0, -look.y) * 1.2 + expr.squint);
     uniforms.uBlink.value = lid + (1 - lid) * blink;
   }
 }
@@ -239,7 +262,7 @@ function Head({ aside }: { aside: boolean }) {
     // Visitors who ask for reduced motion get the finished head straight away.
     uniforms.uBuild.value = REDUCED_MOTION ? 1.1 : Math.min(1.1, (t - start.current) / 1.6);
     // Mouth opens fast and closes a bit slower, which reads as speech rather than flapping.
-    const target = voice.level;
+    const target = Math.max(voice.level, expr.open);
     open.current += (target - open.current) * Math.min(1, dt * (target > open.current ? 22 : 12));
     uniforms.uOpen.value = open.current;
     eyes.current.update(t, dt, pointer.current, voice.speaking);

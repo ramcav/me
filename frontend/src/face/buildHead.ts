@@ -127,15 +127,15 @@ function outline(x: number, y: number) {
 const NOSE_BASE = -2.6;
 function nose(p: V) {
   const [x, y, z] = p;
-  const ridge = 8.6 + (5.5 - y) * 0.42;
-  const bridge = Math.max(Math.abs(x) * 0.95 + (z - ridge), y - 5.5, NOSE_BASE - y, 6 - z);
+  const ridge = 8.6 + (4.5 - y) * 0.48;
+  const bridge = Math.max(Math.abs(x) * 0.95 + (z - ridge), y - 4.5, NOSE_BASE - y, 6 - z);
   const wings = ellipsoid([Math.abs(x), y, z], [1.9, NOSE_BASE + 0.9, 9.8], [1.4, 1.1, 1.3]);
   return Math.min(bridge, wings);
 }
 
 // Eye geometry: centres, and a socket carved into the face so the eyes sit under the brow.
 const EYE_X = 4.2;
-const EYE_Y = 5.6;
+const EYE_Y = 4.6; // set low so the mid-face between eyes and moustache stays short
 const EYE_Z = 8.1; // the eye surface, a little behind the flat front of the face
 const socket = (p: V) => Math.min(
   ellipsoid(p, [-EYE_X - 0.3, EYE_Y, 9.4], [4.4, 2.1, 1.9]),
@@ -149,10 +149,10 @@ function headSdf(p: V, sockets = true) {
   const front = z - (8.4 - 0.45 * Math.max(0, Math.abs(x) - 4.5));
   const face = Math.max(outline(x, y), front, -8 - z, y - 12);
   d = smin(d, face, 1);
-  d = smin(d, Math.max(Math.abs(x) - 7.8, Math.abs(y - 9.2) - 0.8, z - 9.2, 7 - z), 0.5); // brow ridge
+  d = smin(d, Math.max(Math.abs(x) - 7.8, Math.abs(y - 8.2) - 0.8, z - 9.2, 7 - z), 0.5); // brow ridge
   for (const sx of [-1, 1]) {
     // Cheekbones: small angular blocks under the eyes.
-    d = smin(d, Math.max(Math.abs(x - sx * 6.6) - 2.2, Math.abs(y - 2.2) - 1.1, z - (8.3 - Math.abs(x) * 0.12), 4 - z), 0.6);
+    d = smin(d, Math.max(Math.abs(x - sx * 6.6) - 2.2, Math.abs(y - 1.4) - 1, z - (8.3 - Math.abs(x) * 0.12), 4 - z), 0.6);
   }
   d = smin(d, nose(p), 0.5);
   d = smin(d, MOUSTACHE(p), 0.8);
@@ -325,11 +325,11 @@ export function buildHead(): Brick[] {
     for (let j = 0; j < n[1]; j++)
       for (let k = 0; k < n[2]; k++) {
         const p = at(i, j, k);
-        if (p[1] < 2.3 || p[1] > 8.5 || p[2] < -1.5) continue;
+        if (p[1] < 1.3 || p[1] > 7.5 || p[2] < -1.5) continue;
         const d = headSdf(p, false); // glasses sit over the sockets, not in them
         // Two bricks thick, standing well off the face like the NFT's goggles.
         if (d > 0.6 && d <= 0.6 + STEP * 2) {
-          const edge = p[1] < 3.1 || p[1] > 7.7 || p[2] < 0.5;
+          const edge = p[1] < 2.1 || p[1] > 6.7 || p[2] < 0.5;
           bricks.push({ pos: p, color: pick(edge ? GLASS_EDGE : GLASS), chrome: false, glass: true, mouth: 0, stretch: 0, sway: 0 });
         }
       }
