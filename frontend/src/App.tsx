@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react';
-import { bio, intro, links, nft, projects, work, type Item } from './content';
+import { about, bio, intro, links, nft, projects, work, type Item } from './content';
 import { say, stop, type Line } from './face/voice';
 
 // Three.js loads after the text, so the page is readable instantly.
@@ -103,9 +103,25 @@ export default function App() {
       </div>
 
       <header className="reveal mt-10" style={{ animationDelay: '1s' }}>
-        <h1 className="text-fg">{bio.name}</h1>
-        <p className="mt-2 text-muted">{bio.line}</p>
-        <p className="mt-3 text-sm text-muted/80">{bio.curious}</p>
+        <h1 className="text-sm text-muted">{bio.name}</h1>
+        <p className="mt-3 text-xl leading-snug text-fg text-balance">{bio.hook}</p>
+        <p className="mt-4 leading-relaxed text-muted">
+          {about.map((seg, i) =>
+            typeof seg === 'string' ? (
+              seg
+            ) : (
+              <a
+                key={i}
+                href={seg.href}
+                target="_blank"
+                rel="noreferrer"
+                className={`inline-link ${line?.highlight === seg.id ? 'inline-link-active' : ''}`}
+              >
+                {seg.text}
+              </a>
+            ),
+          )}
+        </p>
       </header>
 
       <Section title="Work" items={work} active={line?.highlight} delay="1.1s" />

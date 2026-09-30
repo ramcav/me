@@ -6,10 +6,18 @@ import introLines from './intro.json';
 export const bio = {
   name: 'Ricardo Méndez Cavalieri',
   handle: 'ramcav',
-  line: 'Founding engineer at Supahost, building text and voice agents for hospitality.',
-  // A hint at the research side: what he reads and tinkers with, not claimed as published work.
-  curious: 'Into AI safety and wetware.',
+  hook: 'I build AI agents, and the systems that keep them in check.',
 };
+
+// The intro paragraph: plain strings, and links (which light up when the face mentions them).
+export type Segment = string | { id: string; text: string; href: string };
+export const about: Segment[] = [
+  "I'm a founding engineer at ",
+  { id: 'supahost', text: 'Supahost', href: 'https://supahost.ai' },
+  ', where our voice and text agents handle thousands of guest conversations a month, and I\'m building ',
+  { id: 'merkl', text: 'Merkl', href: 'https://merkl.ai' },
+  ' so agents can move money safely. Before that, I founded a social app and a ticket marketplace that served real customers. Lately I\'m curious about computers made of living neurons.',
+];
 
 export interface Item {
   id: string;
@@ -18,6 +26,7 @@ export interface Item {
   href?: string;
   tag?: string;
 }
+
 
 export const work: Item[] = [
   { id: 'supahost', title: 'Supahost', description: 'Text and voice agents for thousands of guest stays every month.', tag: 'Now' },

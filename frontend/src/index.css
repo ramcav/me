@@ -30,6 +30,23 @@ html {
   box-shadow: inset 2px 0 0 var(--color-accent);
 }
 
+/* Links inside the intro paragraph; they glow when the face talks about them. */
+.inline-link {
+  color: var(--color-fg);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklch, var(--color-fg) 25%, transparent);
+  text-underline-offset: 4px;
+  transition: color 200ms, text-decoration-color 200ms, background-color 300ms;
+  border-radius: 3px;
+}
+.inline-link:hover {
+  text-decoration-color: var(--color-accent);
+}
+.inline-link-active {
+  background: color-mix(in oklch, var(--color-accent) 18%, transparent);
+  text-decoration-color: var(--color-accent);
+}
+
 .caption {
   text-wrap: balance;
 }
