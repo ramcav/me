@@ -10,6 +10,7 @@ export interface Brick {
   glass: boolean;
   mouth: number; // vertical offset per unit of mouth opening (negative = drops)
   stretch: number; // extra height per unit of opening, so neighbouring rows never gap
+  corner?: number; // how much the brick follows a mouth corner; sign says which side
   sway: number; // 0..1, hair-tip wobble
   long?: number; // stretches the brick sideways (1x2 Lego-style)
   eye?: 1 | 2; // 1 = eye white (blinks), 2 = pupil (blinks and looks around)
@@ -160,8 +161,8 @@ function headSdf(p: V, sockets = true) {
   d = smin(d, LOWER_LIP(p), 0.4);
   d = smin(d, Math.max(Math.abs(x) - 3.6, Math.abs(y + 11.3) - 1.4, z - 8.4, 2 - z), 0.6); // square chin
   d = smin(d, neck(p), 2);
-  // Resting mouth: a thin dark line where the lips meet.
-  const slot = ellipsoid(p, [0, MOUTH_Y, 8.4], [4.2, 0.45, 3.6]);
+  // At rest the lips meet (a closed, neutral mouth like the NFT's); only a hairline seam.
+  const slot = ellipsoid(p, [0, MOUTH_Y, 8.4], [4.2, 0.15, 3.6]);
   d = Math.max(d, -slot);
   return sockets ? Math.max(d, -socket(p)) : d;
 }
@@ -194,6 +195,17 @@ function screwAt(p: V) {
 // not at all at the corners (a lens-shaped opening); the chin follows partly; the upper
 // lip lifts a little. Cheeks and the back of the head stay put.
 const MOUTH_HALF_WIDTH = 6;
+// Expressions: bricks near the mouth corners follow them up (smirk) or down (frown). The
+// weight fades toward the centre of the mouth and away from it, so the lips bend, not slide.
+function cornerWeight(p: V) {
+  const [x, y, z] = p;
+  const ax = Math.abs(x);
+  const across = Math.min(1, Math.max(0, (ax - 1.2) / 3.4)) * (1 - Math.min(1, Math.max(0, (ax - 6.2) / 2)));
+  const near = Math.exp(-(((y - MOUTH_Y) / 2.6) ** 2));
+  const front = Math.min(1, Math.max(0, (z - 4) / 4));
+  return Math.sign(x) * across * near * front;
+}
+
 function mouthWeight(p: V) {
   const [x, y, z] = p;
   const lens = Math.max(0, 1 - (x / MOUTH_HALF_WIDTH) ** 2);
@@ -303,6 +315,7 @@ export function buildHead(): Brick[] {
           mouth: !surface ? 0 : kd === 4 ? (lowerTeeth(p) ? -2.4 : 0.3) : mouthWeight(p),
           stretch: !surface || kd === 4 ? 0 : Math.abs(mouthWeight([p[0], p[1] + STEP / 2, p[2]]) - mouthWeight([p[0], p[1] - STEP / 2, p[2]])),
           sway: kd === 2 ? sway[c] : 0,
+          corner: surface && kd === 1 ? cornerWeight(p) : 0,
         });
 
       }

@@ -18,6 +18,7 @@ const uniforms = {
   uOpen: { value: 0 }, // mouth opening 0..1
   uLook: { value: new THREE.Vector2() }, // pupil offset, head units
   uBlink: { value: 0 }, // 0 open, 1 shut
+  uCorners: { value: new THREE.Vector2() }, // mouth corners (x: one side, y: the other); + up, - down
   uLidY: { value: EYE_TOP },
 };
 
@@ -29,11 +30,12 @@ function patch(material: THREE.Material) {
       .replace(
         '#include <common>',
         `#include <common>
-        uniform float uTime; uniform float uBuild; uniform float uOpen; uniform vec2 uLook; uniform float uBlink; uniform float uLidY;
+        uniform float uTime; uniform float uBuild; uniform float uOpen; uniform vec2 uLook; uniform float uBlink; uniform vec2 uCorners; uniform float uLidY;
         attribute vec4 aHome; attribute vec4 aScatter; // aHome.w = brick scale, aScatter.w = brick length
         // Packed to stay under WebGL's 16 vertex attributes.
         attribute vec4 aAnim; // mouth, stretch, eye (1 white, 2 pupil), sway
         attribute vec4 aMisc; // phase, delay, tilt.xy
+        attribute float aCorner; // signed: which mouth corner, and how much
         #define aMouth aAnim.x
         #define aStretch aAnim.y
         #define aEye aAnim.z
@@ -46,6 +48,7 @@ function patch(material: THREE.Material) {
         '#include <begin_vertex>',
         `vec3 p = aHome.xyz;
         p.y += aMouth * uOpen;
+        p.y += aCorner > 0.0 ? aCorner * uCorners.x : -aCorner * uCorners.y;
         p.z -= abs(aMouth) * uOpen * 0.25; // lips roll back slightly as they part
         if (aEye > 1.5) p.xy += uLook;
         if (aEye > 0.5) p.y = mix(p.y, uLidY, uBlink); // the eye folds up under the lid
@@ -87,7 +90,7 @@ function Bricks({ bricks, kind }: { bricks: Brick[]; kind: Kind }) {
   const mesh = useMemo(() => {
     const n = bricks.length;
     const f = (k: number) => new Float32Array(n * k);
-    const home = f(4), scatter = f(4), anim = f(4), misc = f(4);
+    const home = f(4), scatter = f(4), anim = f(4), misc = f(4), corner = f(1);
     const geo = new THREE.BoxGeometry(1, 1, 1);
     const m = new THREE.InstancedMesh(geo, patch(MATERIALS[kind]()), n);
     const r = rng(kind.length * 7 + 1);
@@ -97,6 +100,7 @@ function Bricks({ bricks, kind }: { bricks: Brick[]; kind: Kind }) {
       // Start just above the brick's own spot, so the head builds in place.
       scatter.set([b.pos[0] + (r() - 0.5) * 1.2, b.pos[1] + 4 + r() * 3, b.pos[2] + (r() - 0.5) * 1.2, b.long ?? 1], i * 4);
       anim.set([b.mouth, b.stretch, b.eye ?? 0, b.sway], i * 4);
+      corner[i] = b.corner ?? 0;
       const tilt = b.scale ? 0 : 0.28;
       // Layer by layer from the neck up to the hair tips.
       misc.set([r(), Math.max(0, (b.pos[1] + 18) / 50) * 0.7 + r() * 0.08, (r() - 0.5) * tilt, (r() - 0.5) * tilt], i * 4);
@@ -107,6 +111,7 @@ function Bricks({ bricks, kind }: { bricks: Brick[]; kind: Kind }) {
     geo.setAttribute('aScatter', attr(scatter, 4));
     geo.setAttribute('aAnim', attr(anim, 4));
     geo.setAttribute('aMisc', attr(misc, 4));
+    geo.setAttribute('aCorner', attr(corner, 1));
     m.frustumCulled = false; // real positions come from the shader
     if (kind === 'glass') m.renderOrder = 1;
     return m;
@@ -120,6 +125,41 @@ function Bricks({ bricks, kind }: { bricks: Brick[]; kind: Kind }) {
 // that look away about half the time instead of staring. The eyes follow the cursor only
 // while it moves; while talking they mostly look at the viewer.
 const RELAXED_LID = 0.1; // lids rest slightly lowered; wide-open eyes read as a stare
+
+// Small, passing expressions, like the blinking: every few seconds the mouth may frown a
+// little, smirk to one side or turn pensive, hold it, then relax back to neutral. While
+// talking it stays close to neutral.
+class Mood {
+  private next = 3;
+  private resting = true;
+  private target = { a: 0, b: 0 };
+
+  update(t: number, dt: number, speaking: boolean) {
+    if (t > this.next) {
+      if (this.resting) {
+        const side = Math.random() < 0.5;
+        const roll = Math.random();
+        const pick = speaking
+          ? { a: (Math.random() - 0.5) * 0.2, b: (Math.random() - 0.5) * 0.2 }
+          : roll < 0.35 ? { a: -0.8, b: -0.8 } // slight frown
+          : roll < 0.6 ? (side ? { a: 0.75, b: -0.05 } : { a: -0.05, b: 0.75 }) // smirk
+          : roll < 0.8 ? (side ? { a: -0.7, b: -0.15 } : { a: -0.15, b: -0.7 }) // pensive, one side down
+          : { a: 0.15, b: 0.15 }; // content
+        this.target = pick;
+        this.next = t + 1.5 + Math.random() * 2;
+      } else {
+        this.target = { a: 0, b: 0 };
+        this.next = t + 3 + Math.random() * 4;
+      }
+      this.resting = !this.resting;
+    }
+    // Ease in over about half a second: faces drift into expressions, they don't snap.
+    const c = uniforms.uCorners.value;
+    const k = Math.min(1, dt * 3);
+    c.x += (this.target.a - c.x) * k;
+    c.y += (this.target.b - c.y) * k;
+  }
+}
 
 class Eyes {
   lastMove = -10;
@@ -173,6 +213,7 @@ function Head({ aside }: { aside: boolean }) {
   const start = useRef<number | null>(null);
   const open = useRef(0);
   const eyes = useRef(new Eyes());
+  const mood = useRef(new Mood());
 
   const groups = useMemo(() => {
     const all = buildHead();
@@ -202,6 +243,7 @@ function Head({ aside }: { aside: boolean }) {
     open.current += (target - open.current) * Math.min(1, dt * (target > open.current ? 22 : 12));
     uniforms.uOpen.value = open.current;
     eyes.current.update(t, dt, pointer.current, voice.speaking);
+    mood.current.update(t, dt, voice.speaking);
 
     const g = group.current;
     if (!g) return;
