@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { buildHead, EYE_TOP, STEP, type Brick } from './buildHead';
+import { buildHead, EYE_TOP, MOUTH_Y, STEP, type Brick } from './buildHead';
 import { voice } from './voice';
 
 function rng(seed: number) {
@@ -228,10 +228,15 @@ class Eyes {
 
 const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const HEAD_SCALE = 0.095;
+const TONGUE_Y = MOUTH_Y - 1.5;
 const HEAD_HALF_WIDTH = 2.6; // world units at HEAD_SCALE, hair tips included
 
 function Head({ aside }: { aside: boolean }) {
   const group = useRef<THREE.Group>(null);
+  const mouthBack = useRef<THREE.Group>(null);
+  const tongue = useRef<THREE.Mesh>(null);
+  const lastLevel = useRef(0);
+  const flick = useRef(0);
   const pointer = useRef({ x: 0, y: 0 });
   const start = useRef<number | null>(null);
   const open = useRef(0);
@@ -261,10 +266,20 @@ function Head({ aside }: { aside: boolean }) {
     uniforms.uTime.value = t;
     // Visitors who ask for reduced motion get the finished head straight away.
     uniforms.uBuild.value = REDUCED_MOTION ? 1.1 : Math.min(1.1, (t - start.current) / 1.6);
+    if (mouthBack.current) mouthBack.current.visible = uniforms.uBuild.value >= 1;
     // Mouth opens fast and closes a bit slower, which reads as speech rather than flapping.
     const target = Math.max(voice.level, expr.open);
     open.current += (target - open.current) * Math.min(1, dt * (target > open.current ? 22 : 12));
     uniforms.uOpen.value = open.current;
+    // The tongue rides on the jaw (about 60% of the lower lip's drop) and lifts briefly at the
+    // start of loud syllables, like "t", "d" or "n".
+    if (voice.level - lastLevel.current > 0.12) flick.current = 0.6;
+    lastLevel.current = voice.level;
+    flick.current *= Math.exp(-dt * 10);
+    if (tongue.current) {
+      tongue.current.position.y = TONGUE_Y - open.current * 1.3 + flick.current;
+      tongue.current.visible = open.current > 0.04; // at rest it would peek through gaps in the lips
+    }
     eyes.current.update(t, dt, pointer.current, voice.speaking);
     mood.current.update(t, dt, voice.speaking);
 
@@ -292,6 +307,18 @@ function Head({ aside }: { aside: boolean }) {
   return (
     <group ref={group} scale={HEAD_SCALE}>
       {groups.map(([k, bricks]) => <Bricks key={k} bricks={bricks} kind={k} />)}
+      {/* The inside of the mouth: a solid dark wall with a tongue low at the back. Solid shapes rather than
+          bricks, so the gaps between loose bricks never show a grid. Hidden until the head is built. */}
+      <group ref={mouthBack} visible={false}>
+        <mesh position={[0, MOUTH_Y - 1.2, 5.9]}>
+          <boxGeometry args={[8.4, 4.4, 0.8]} />
+          <meshBasicMaterial color="#0b0406" />
+        </mesh>
+        <mesh ref={tongue} position={[0, TONGUE_Y, 6.6]} scale={[2.6, 0.9, 1]}>
+          <sphereGeometry args={[1, 20, 12]} />
+          <meshStandardMaterial color="#6a2634" roughness={0.6} />
+        </mesh>
+      </group>
     </group>
   );
 }

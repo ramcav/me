@@ -14,9 +14,11 @@ export type Segment = string | { id: string; text: string; href: string };
 export const about: Segment[] = [
   "I'm a founding engineer at ",
   { id: 'supahost', text: 'Supahost', href: 'https://supahost.ai' },
-  ', where our voice and text agents handle thousands of guest conversations a month, and I\'m building ',
+  ", where I build the AI agents behind thousands of guest stays every month, including a voice agent I built from scratch. I'm also building ",
   { id: 'merkl', text: 'Merkl', href: 'https://merkl.ai' },
-  ' so agents can move money safely. Before that, I founded a social app and a ticket marketplace that served real customers. Lately I\'m curious about computers made of living neurons.',
+  ' so agents can move money safely. My team won the ',
+  { id: 'vortex', text: 'voice-agent track at HackSpain 2026', href: 'https://github.com/jferreiros/vortex' },
+  ", and I graduated Best Student of my class in CS & AI at IE University. Before that, I founded a startup: a nightlife social app that partnered with some of Madrid's top clubs, and a ticket marketplace that sold out a night at one of Colombia's biggest venues.",
 ];
 
 export interface Item {
@@ -29,10 +31,10 @@ export interface Item {
 
 
 export const work: Item[] = [
-  { id: 'supahost', title: 'Supahost', description: 'Text and voice agents for thousands of guest stays every month.', tag: 'Now' },
+  { id: 'supahost', title: 'Supahost', description: 'Voice and text agents handling thousands of guest stays every month.', tag: 'Now' },
   { id: 'ie', title: 'IE University', description: 'CS & AI. Best Student of the 2026 class.', tag: '2026' },
   { id: 'wise', title: 'Wise', description: 'Backend intern in Tallinn. Remediated 3M verified ID records.', tag: '2025' },
-  { id: 'thehouse', title: 'theHouse', description: 'Founder. Dash, a ticketing and CRM platform, and an iOS app with 500+ downloads.', tag: '2023–25' },
+  { id: 'thehouse', title: 'theHouse & Dash', description: 'Founder. A nightlife social app with 500+ downloads, then a ticket marketplace that sold out a night in Colombia.', tag: '2023–25' },
 ];
 
 export const projects: Item[] = [

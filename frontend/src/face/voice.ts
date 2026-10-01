@@ -9,8 +9,9 @@ export const voice = {
 };
 
 export interface Line {
-  text: string;
+  text: string; // what is spoken, as one natural sentence
   highlight?: string; // id of the list item to light up while this line plays
+  captions?: string[]; // shorter on-screen chunks of a long sentence, shown in turn as it's spoken
 }
 
 type LineHandler = (line: Line | null) => void;
@@ -99,10 +100,18 @@ export async function say(lines: Line[], onLine: LineHandler) {
 
   for (const [i, line] of lines.entries()) {
     if (cancelled) return;
-    onLine(line);
+    onLine(captionAt(line, 0));
     voice.speaking = true;
     const clip = clips[i];
+    // Long sentences are spoken in one go; their caption chunks advance with the audio.
+    const progress = clip ? () => (clip.duration ? clip.currentTime / clip.duration : 0) : timer(line.text.length * 60);
+    let shown = 0;
+    const follow = line.captions ? setInterval(() => {
+      const k = chunkAt(line.captions!, progress());
+      if (k !== shown && !cancelled) { shown = k; onLine(captionAt(line, k)); }
+    }, 80) : 0;
     await (clip ? play(clip, a) : mime(line.text));
+    clearInterval(follow);
     voice.speaking = false;
     if (cancelled) return;
     await new Promise((r) => setTimeout(r, 250));
@@ -119,6 +128,27 @@ function play(el: HTMLAudioElement, a: { ctx: AudioContext; analyser: AnalyserNo
     el.onerror = done;
     el.play().catch(done);
   });
+}
+
+// The on-screen version of a line: one caption chunk, keeping the highlight.
+function captionAt(line: Line, k: number): Line {
+  return line.captions ? { text: line.captions[k], highlight: line.highlight } : line;
+}
+
+// Which chunk is being spoken, assuming speech moves through the text at an even pace.
+function chunkAt(chunks: string[], progress: number) {
+  const total = chunks.reduce((n, c) => n + c.length, 0);
+  let seen = 0;
+  for (const [k, c] of chunks.entries()) {
+    seen += c.length;
+    if (progress * total < seen) return k;
+  }
+  return chunks.length - 1;
+}
+
+function timer(ms: number) {
+  const start = performance.now();
+  return () => Math.min(1, (performance.now() - start) / ms);
 }
 
 // No clip for this line: move the mouth for a plausible duration.

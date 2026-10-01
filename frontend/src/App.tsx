@@ -83,7 +83,7 @@ export default function App() {
       </div>
 
       {/* One caption: who the face is, how to talk to it, and a bubble with its story. */}
-      <div className="reveal relative mt-4 min-h-[2.75rem] text-center text-[15px]" style={{ animationDelay: '0.9s' }} aria-live="polite">
+      <div className="reveal relative mt-4 h-[3rem] text-center text-[15px]" style={{ animationDelay: '0.9s' }} aria-live="polite">
         {line ? (
           <p className="caption text-fg">{line.text}</p>
         ) : (
@@ -124,7 +124,7 @@ export default function App() {
         </p>
       </header>
 
-      <Section title="Work" items={work} active={line?.highlight} delay="1.1s" />
+      <Section title="Experience" items={work} active={line?.highlight} delay="1.1s" />
       <Section title="Building" items={projects} active={line?.highlight} delay="1.2s" />
 
       <section className="reveal mt-14" style={{ animationDelay: '1.3s' }}>
@@ -135,6 +135,13 @@ export default function App() {
           ))}
         </div>
       </section>
+
+      <footer className="reveal mt-16 text-xs text-muted" style={{ animationDelay: '1.4s' }}>
+        Built brick by brick, with a little help from AI.{' '}
+        <a href="https://github.com/ramcav/me" target="_blank" rel="noreferrer" className="inline-link">
+          See the source
+        </a>
+      </footer>
     </main>
   );
 }

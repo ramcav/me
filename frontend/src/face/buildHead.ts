@@ -18,7 +18,7 @@ export interface Brick {
 }
 
 export const STEP = 0.85;
-const MOUTH_Y = -5.9; // parting line between the lips
+export const MOUTH_Y = -5.9; // parting line between the lips
 
 type V = [number, number, number];
 
@@ -167,8 +167,8 @@ function headSdf(p: V, sockets = true) {
   return sockets ? Math.max(d, -socket(p)) : d;
 }
 
-const upperTeeth = (p: V) => Math.abs(p[0]) < 3.4 && p[1] > -6.2 && p[1] < -5.2 && p[2] > 6 && p[2] < 8.2;
-const lowerTeeth = (p: V) => Math.abs(p[0]) < 3 && p[1] > -6.8 && p[1] < -6 && p[2] > 6 && p[2] < 7.8;
+const upperTeeth = (p: V) => Math.abs(p[0]) < 2.6 && p[1] > -6.2 && p[1] < -5.2 && p[2] > 6 && p[2] < 8.2;
+const lowerTeeth = (p: V) => Math.abs(p[0]) < 2.6 && p[1] > -6.8 && p[1] < -6 && p[2] > 6 && p[2] < 7.8;
 
 function hairAt(p: V) {
   let t = -1;
@@ -284,16 +284,14 @@ export function buildHead(): Brick[] {
         const p = at(i, j, k);
         const surface = !filled(i + 1, j, k) || !filled(i - 1, j, k) || !filled(i, j + 1, k) ||
           !filled(i, j - 1, k) || !filled(i, j, k + 1) || !filled(i, j, k - 1);
-        // Keep a dark wall of interior bricks behind the lips; it shows when the mouth opens.
-        const behindLips = p[1] > MOUTH_Y - 3.4 && p[1] < MOUTH_Y + 1.2 && Math.abs(p[0]) < MOUTH_HALF_WIDTH && p[2] > 2;
-        if (!surface && !behindLips) continue;
+        if (!surface) continue; // the mouth's inside is a solid wall drawn by Face.tsx
 
         let color: string;
         let chrome = false;
-        if (!surface) color = '#3a0d14'; // inside the mouth, seen when the jaw drops
-        else if (kd === 4) color = pick(TOOTH);
+        if (kd === 4) color = pick(TOOTH);
         else if (kd === 3) { chrome = r() < 0.85; color = chrome ? pick(CHROME) : pick(WHITE); }
-        else if (kd === 2) color = clump(p) < 0.2 || r() < 0.05 ? pick(WHITE) : pick(BLUE);
+        // White patches only up in the hair; on the side locks next to the mouth they read as teeth.
+        else if (kd === 2) color = p[1] > 2 && (clump(p) < 0.2 || r() < 0.05) ? pick(WHITE) : pick(BLUE);
         else color = skinColor(p, r, pick);
 
         const lipBrick = kd === 1 && (LIP.includes(color) || STACHE.includes(color));
@@ -313,7 +311,10 @@ export function buildHead(): Brick[] {
           pos: surface ? [p[0] + (r() - 0.5) * 0.2, p[1] + (r() - 0.5) * 0.2, p[2] + (r() - 0.5) * 0.35] : p,
           color, chrome, glass: false,
           mouth: !surface ? 0 : kd === 4 ? (lowerTeeth(p) ? -2.4 : 0.3) : mouthWeight(p),
-          stretch: !surface || kd === 4 ? 0 : Math.abs(mouthWeight([p[0], p[1] + STEP / 2, p[2]]) - mouthWeight([p[0], p[1] - STEP / 2, p[2]])),
+          // Chin bricks stretch so rows don't gap as the lip drops; lip bricks at the parting line don't
+          // (the weight jumps there, which would turn them into tall bars).
+          stretch: !surface || kd === 4 || Math.abs(p[1] - MOUTH_Y) < 1.6 ? 0
+            : Math.min(0.6, Math.abs(mouthWeight([p[0], p[1] + STEP / 2, p[2]]) - mouthWeight([p[0], p[1] - STEP / 2, p[2]]))),
           sway: kd === 2 ? sway[c] : 0,
           corner: surface && kd === 1 ? cornerWeight(p) : 0,
         });
@@ -415,5 +416,7 @@ function skinColor(p: V, r: () => number, pick: (xs: string[]) => string) {
   const aboveBeard = y > -3.3 + x * x * 0.035 + edge; // soft U along the upper lip, not a V
   const noseBridge = Math.abs(x) < 3 && y > -3.4 && z > 7.6; // nose runs down into the upper lip
   if (front && (aboveBeard || noseBridge) && Math.abs(x) < 9.2 + edge) return pick(ORANGE);
-  return r() < 0.08 ? pick(WHITE) : pick(z > 3 && y < 0 ? BEARD : BLUE);
+  // White flecks like the NFT's, but never on the lower face, where a white brick reads as a tooth.
+  const lowerFace = y < 0 && z > -2; // cheeks, beard, jaw: all around the mouth, from any angle
+  return !lowerFace && r() < 0.08 ? pick(WHITE) : pick(z > 3 && y < 0 ? BEARD : BLUE);
 }

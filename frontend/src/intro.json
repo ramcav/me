@@ -1,28 +1,49 @@
 [
   {
-    "text": "Hey. I'm Ricardo. Well, a brick version of him."
+    "text": "Hey. I'm Ricardo. Well, a brick version of him, with a borrowed voice."
   },
   {
-    "text": "I'm a founding engineer at Supahost, where I build the text and voice agents that talk to thousands of guests every month.",
-    "highlight": "supahost"
+    "text": "I build AI agents, and the systems that keep them in check."
   },
   {
-    "text": "On the side I'm building Merkl, so AI agents can move money without ever breaking your rules.",
+    "text": "I'm a founding engineer at Supahost, where I build the AI agents behind thousands of guest stays every month, including a voice agent I built from scratch.",
+    "highlight": "supahost",
+    "captions": [
+      "I'm a founding engineer at Supahost,",
+      "where I build the AI agents behind thousands of guest stays every month,",
+      "including a voice agent I built from scratch."
+    ]
+  },
+  {
+    "text": "I'm also building Merkl, so agents can move money safely.",
     "highlight": "merkl"
   },
   {
-    "text": "My thesis, ENGRAM, is about how agents remember.",
-    "highlight": "engram"
+    "text": "My team won the voice-agent track at HackSpain 2026, and I graduated Best Student of my class in CS and AI at IE University.",
+    "highlight": "vortex",
+    "captions": [
+      "My team won the voice-agent track at HackSpain 2026,",
+      "and I graduated Best Student of my class in CS & AI at IE University."
+    ]
   },
   {
-    "text": "And at HackSpain 2026, my team won the voice-agent track.",
-    "highlight": "vortex"
+    "text": "Before that, I founded a startup: a nightlife social app that partnered with some of Madrid's top clubs, and a ticket marketplace that sold out a night at one of Colombia's biggest venues.",
+    "highlight": "thehouse",
+    "captions": [
+      "Before that, I founded a startup:",
+      "a nightlife social app that partnered with some of Madrid's top clubs,",
+      "and a ticket marketplace that sold out a night at one of Colombia's biggest venues."
+    ]
   },
   {
-    "text": "Lately I read about AI safety, and computers made of living neurons."
+    "text": "Lately, I'm curious about computers made of living neurons."
   },
   {
-    "text": "Fun fact: I'm an NFT he bought in 2021. One of his worst investments, so he put me here."
+    "text": "Fun fact: I'm an NFT he bought in 2021. One of his worst investments, so he put me here.",
+    "captions": [
+      "Fun fact: I'm an NFT he bought in 2021.",
+      "One of his worst investments, so he put me here."
+    ]
   },
   {
     "text": "Scroll down for the rest. Soon, you'll be able to just ask me."
