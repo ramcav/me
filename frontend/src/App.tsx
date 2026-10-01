@@ -135,13 +135,6 @@ export default function App() {
           ))}
         </div>
       </section>
-
-      <footer className="reveal mt-16 text-xs text-muted" style={{ animationDelay: '1.4s' }}>
-        Built brick by brick, with a little help from AI.{' '}
-        <a href="https://github.com/ramcav/me" target="_blank" rel="noreferrer" className="inline-link">
-          See the source
-        </a>
-      </footer>
     </main>
   );
 }
