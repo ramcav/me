@@ -50,7 +50,6 @@ export const links: Item[] = [
   { id: 'x', title: 'X', description: '', href: 'https://x.com/rixonardo' },
   { id: 'linkedin', title: 'LinkedIn', description: '', href: 'https://www.linkedin.com/in/ricardomendezcavalieri/' },
   { id: 'email', title: 'Email', description: '', href: 'mailto:ramcavalieri@gmail.com' },
-  { id: 'cv', title: 'CV', description: '', href: '/cv.pdf' },
   { id: 'source', title: 'Source', description: '', href: 'https://github.com/ramcav/me' },
 ];
 
