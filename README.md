@@ -1,8 +1,8 @@
 # me
 
-My portfolio: **[me-xi-teal.vercel.app](https://me-xi-teal.vercel.app)**
+My portfolio: **[ramcav.dev](https://ramcav.dev)**
 
-<p align="center"><img src="docs/face.png" width="480" alt="A talking head made of bricks, modelled on Bricktopian #3899"></p>
+<p align="center"><img src="docs/face.gif" width="480" alt="A talking head made of bricks, modelled on Bricktopian #3899"></p>
 
 The face is a 3D brick version of **Bricktopian #3899**, an NFT I bought in 2021 (one of my worst investments). Tap it and it introduces me, out loud, with the matching parts of the page lighting up as it talks.
 
